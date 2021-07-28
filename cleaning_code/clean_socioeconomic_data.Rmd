@@ -1,0 +1,30 @@
+---
+title: "clean_socioeconomic_data.Rmd"
+author: "Christine Guo"
+output: html_document
+---
+
+```{r Setup, include=FALSE, results='hide', warning=FALSE}
+knitr::opts_chunk$set(echo = T, cache = T, fig.width=8, fig.height=4,
+                      warning = F)
+options(scipen = 0, digits = 3)  ## controls base R output
+
+## Package setup
+if(!require("pacman")) install.packages("pacman")
+
+pacman::p_load(tidyverse, dplyr)
+```
+
+```{r}
+# read in data
+socioeconomic_data <- read.csv("data/socioeconomic_data.csv", header = TRUE, stringsAsFactors = F)
+# select the variables we want 
+socioeconomic_data <- socioeconomic_data %>% 
+  select(FIPS,UnempRate2019, MedHHInc, Deep_Pov_All, PovertyAllAgesPct, PerCapitaInc, AvgHHSize,
+         PctEmpFIRE, PctEmpConstruction, PctEmpTrans, PctEmpMining, PctEmpTrade, PctEmpInformation, PctEmpAgriculture, PctEmpManufacturing, PctEmpServices,
+         HispanicPct2010, NativeAmericanNonHispanicPct2010, WhiteNonHispanicPct2010, BlackNonHispanicPct2010, AsianNonHispanicPct2010, 
+         Ed1LessThanHSPct, Ed2HSDiplomaOnlyPct, Ed3SomeCollegePct, Ed4AssocDegreePct, Ed5CollegePlusPct, Net_International_Migration_Rate_2010_2019)
+# write data to file 
+write.csv(socioeconomic_data, "data/cleaned_socioeconomic_data.csv")
+```
+
