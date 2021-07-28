@@ -1,0 +1,54 @@
+---
+title: "merge_data.Rmd"
+author: "Christine Guo"
+output: html_document
+---
+
+```{r Setup, include=FALSE, results='hide', warning=FALSE}
+knitr::opts_chunk$set(echo = T, cache = T, fig.width=8, fig.height=4,
+                      warning = F)
+options(scipen = 0, digits = 3)  ## controls base R output
+
+## Package setup
+if(!require("pacman")) install.packages("pacman")
+
+pacman::p_load(tidyverse, dplyr, tibble)
+```
+
+```{r}
+# read in data
+death_data <- read.csv("data/cleaned_death_data.csv", header = TRUE, stringsAsFactors = F)
+aqi_data <- read.csv("data/cleaned_annual_aqi_by_county_2019.csv", header = TRUE, stringsAsFactors = F)
+temp_data <- read.csv("data/cleaned_temperature_precipitation_2019.csv", header = TRUE, stringsAsFactors = F)
+socioeconomic_data <- read.csv("data/cleaned_socioeconomic_data.csv", header = TRUE, stringsAsFactors = F)
+political_data <- read.csv("data/2020_US_County_Level_Presidential_Results.csv", header = TRUE, stringsAsFactors = F)
+
+# remove X columns
+aqi_data <- aqi_data[, -1]
+death_data <- death_data[, -1]
+temp_data <- temp_data[, -1]
+socioeconomic_data <- socioeconomic_data[, -1]
+
+# create a column to analyze percent of unhealthy days 
+unhealthy_days <- aqi_data %>%
+  mutate(per_unhealthy_days = (Unhealthy.for.Sensitive.Groups.Days + Unhealthy.Days + Very.Unhealthy.Days	+ Hazardous.Days)/Days.with.AQI) %>%
+  select(State, County, per_unhealthy_days, Median.AQI)
+
+# merge dataframes by county column 
+merged_data <- death_data %>% left_join(unhealthy_days, by=c("State","County"))
+merged_data <- merged_data %>% left_join(temp_data, by=c("State","County"))
+names(merged_data)[3] <- 'FIPS'
+merged_data <- merged_data %>% left_join(socioeconomic_data, by=c("FIPS"))
+political_data <- political_data[ , -which(names(political_data) %in% c("state_name", "county_name"))]
+names(political_data)[1] <- 'FIPS'
+merged_data <- left_join(merged_data, political_data, by = c("FIPS"="FIPS")) 
+
+# remove the variables we don't need to analyze 
+merged_data <- subset(merged_data, select = -c(Deaths, Crude.Rate, total_votes, votes_gop, votes_dem, diff))
+# remove NAs 
+merged_data <- drop_na(merged_data)  
+
+# write data to file 
+write.csv(merged_data, "data/merged_data.csv")
+```
+
