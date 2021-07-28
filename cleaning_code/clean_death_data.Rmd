@@ -1,0 +1,47 @@
+---
+title: "clean_data.Rmd"
+output: html_document
+---
+
+```{r Setup, include=FALSE, results='hide', warning=FALSE}
+knitr::opts_chunk$set(echo = T, cache = T, fig.width=8, fig.height=4,
+                      warning = F)
+options(scipen = 0, digits = 3)  ## controls base R output
+
+## Package setup
+if(!require("pacman")) install.packages("pacman")
+
+pacman::p_load(tidyverse, dplyr)
+```
+
+```{r death_data}
+# read in data
+death_data <- read.csv("data/death_data.csv", header = TRUE, stringsAsFactors = F)
+# remove the first column since it's empty 
+death_data <- death_data[-1]
+# remove rows after 991 because they're empty
+n <- nrow(death_data)
+death_data <- death_data[-992:-n, ]
+
+# separate state and county 
+# put state and county separately into a list 
+list <- strsplit(death_data$County,",")
+n <- nrow(death_data)
+# convert list into a dataframe with state and county columns 
+county_state_df <- data.frame(matrix(unlist(list), nrow = n, byrow=TRUE),stringsAsFactors=FALSE)
+# add those columns to death_data
+death_data$County <- county_state_df[, 1]
+death_data <- cbind(county_state_df[, 2], death_data)
+names(death_data)[1] <- 'State'
+
+# replace 'unreliable' with NA 
+death_data$Crude.Rate[death_data$Crude.Rate == 'Unreliable'] <- NA
+death_data$Age.Adjusted.Rate [death_data$Age.Adjusted.Rate  == 'Unreliable'] <- NA
+summary(death_data)
+
+# write data to csv 
+write.csv(death_data, file = "data/cleaned_death_data.csv")
+```
+
+
+
