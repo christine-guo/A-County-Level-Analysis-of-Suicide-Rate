@@ -1,0 +1,29 @@
+---
+title: "clean_temp_data.Rmd"
+author: "Christine Guo" 
+output: html_document
+---
+
+```{r Setup, include=FALSE, results='hide', warning=FALSE}
+knitr::opts_chunk$set(echo = T, cache = T, fig.width=8, fig.height=4,
+                      warning = F)
+options(scipen = 0, digits = 3)  ## controls base R output
+
+## Package setup
+if(!require("pacman")) install.packages("pacman")
+
+pacman::p_load(tidyverse, dplyr, tibble, usmap)
+```
+
+```{r}
+# read in data
+temp_data <- read.csv("data/temperature_precipitation_2019.csv", header = TRUE, stringsAsFactors = F)
+# remove fips from location ID and keep state abbreviation 
+temp_data$Location.ID[] <- gsub('.{4}$', '', temp_data$Location.ID[])
+temp_data <- temp_data[, -1]
+# rename columns
+names(temp_data)[1] <- 'State'
+names(temp_data)[2] <- 'County'
+write.csv(temp_data, "data/cleaned_temperature_precipitation_2019.csv")
+```
+
