@@ -1,0 +1,38 @@
+---
+title: "environment eda"
+author: "Cynthia Li"
+date: "7/27/2021"
+output: html_document
+---
+
+```{r}
+p_load(BiocManager)
+#obtain temperature data
+temp_data <- fread("data/temperature data.csv")
+#obtain precipitation data
+precip_data <- fread("data/precipitation data.csv")
+
+temp_precip <- right_join(temp_data,
+                         precip_data,
+                         by = "Location ID", "Location")
+temp_precip
+
+```
+```{r}
+#rename value.x to average temperature
+names(temp_precip)[3] <- "Avg_Temperature"
+names(temp_precip)[4] <- "Temperature_Rank"
+#rename value.y to total precipitation
+names(temp_precip)[8] <- "Total_Precipitation"
+names(temp_precip)[9] <- "Precipitation_Rank"
+```
+
+```{r}
+#eliminate other county column, Anomaly(1901-2000 base period).x, 1901-2000 Mean.x, Anomaly(1901-2000 base period).y, 1901-2000 Mean.y
+temp_precip <- subset(temp_precip, select = c(1, 2, 3, 8))
+
+#turn into csv file
+write.csv(temp_precip, file = "data/temperature_precipitation_2019")
+
+```
+
