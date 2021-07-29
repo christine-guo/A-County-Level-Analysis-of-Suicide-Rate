@@ -1,0 +1,112 @@
+---
+title: "Models and Model Evaluations"
+author: "Christine, Michael"
+date: "7/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = T, fig.width=8, fig.height=4)
+options(scipen = 0, digits = 3)  # controls base R output
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(tree, rpart, randomForest, ranger, rattle, pROC, partykit, ggplot2, glmnet, lda, data.table, ISLR, dplyr, tidyverse, car)
+# install a package if it does not exist already and put the package in the path (library)
+# dplyr, ggplot2,tidyr
+```
+
+Read in data and split into testing + training datasets.
+```{r}
+data <- read.csv("data/merged_data.csv") %>% select(-X, -State, -County, -FIPS)
+data <- data %>% drop_na()
+n <- nrow(data)
+set.seed(1)
+train.index <- sample(n, n*3/4) # we use about 3/4 of the subjects as the training data.
+data.train <- data[train.index,]
+data.test <- data[-train.index, ]
+```
+
+Create single decision tree model with all predictors.
+```{r}
+fit.single.full <- tree(Age.Adjusted.Rate ~ ., data.train)
+
+plot(fit.single.full)
+title(main = "Single Tree With All Predictors")
+text(fit.single.full, pretty = 0, digits = 3)
+```
+
+Create linear regression model using single decision tree variables.
+```{r}
+fit.lm <- lm(Age.Adjusted.Rate ~ Population + Total_Precipitation + Net_International_Migration_Rate_2010_2019 + Ed3SomeCollegePct + HispanicPct2010 + BlackNonHispanicPct2010 + AvgHHSize + PctEmpMining + Avg_Temperature, data.train)
+
+# residual plot 
+plot(fit.lm, 1, pch=16)
+abline(h=0, col="blue", lwd=3)
+#qqplot 
+plot(fit.lm, 2) 
+```
+
+Create random forest.
+```{r}
+fit.rf <- randomForest(Age.Adjusted.Rate ~ ., data.train, mtry = 11, ntree = 500)
+
+plot(fit.rf)
+```
+
+Create LASSO model.
+```{r}
+# remove county and state columns 
+X <- model.matrix(Age.Adjusted.Rate~., data = data.train)[,-1:-2]
+y <- data.train$Age.Adjusted.Rate
+# LASSO
+fit <- cv.glmnet(X, y, nfolds = 10, alpha = 1) 
+plot(fit)
+# list all non-zero coefficients 
+coef.min <- coef(fit, s="lambda.min")
+# list of variables that have non-zero coefficients 
+var.min <- coef.min@Dimnames[[1]][coef.min@i + 1][-1]
+```
+
+Perform backwards selection.
+```{r}
+# get subset of data with the response variable and LASSO output 
+data_subset <- select(data.train, c("Age.Adjusted.Rate", var.min))
+# relaxed LASSO
+fit.min.lm <- lm(Age.Adjusted.Rate~., data_subset)
+# begin backwards selection until all variables are significant at 0.05 level
+fit.min.lm.back1 <- update(fit.min.lm, .~. - PovertyAllAgesPct)
+fit.min.lm.back2 <- update(fit.min.lm.back1, .~. - AsianNonHispanicPct2010)
+fit.min.lm.back3 <- update(fit.min.lm.back2, .~. - PctEmpTrans)
+fit.min.lm.back4 <- update(fit.min.lm.back3, .~. - PctEmpAgriculture)
+fit.min.lm.back5 <- update(fit.min.lm.back4, .~. - Ed5CollegePlusPct)
+fit.min.lm.back6 <- update(fit.min.lm.back5, .~. - BlackNonHispanicPct2010)
+fit.min.lm.back7 <- update(fit.min.lm.back6, .~. - Ed4AssocDegreePct)
+fit.min.lm.back8 <- update(fit.min.lm.back7, .~. - PerCapitaInc)
+fit.min.lm.back9 <- update(fit.min.lm.back8, .~. - Avg_Temperature)
+fit.min.lm.back10 <- update(fit.min.lm.back9, .~. - PctEmpFIRE)
+fit.final <- update(fit.min.lm.back10, .~. - PctEmpInformation)
+```
+
+Perform diagnostics on LASSO model.
+```{r}
+# residual plot 
+plot(fit.final, 1, pch=16)
+abline(h=0, col="blue", lwd=3)
+#qqplot 
+plot(fit.final, 2) 
+```
+
+
+Evaluate all 4 models.
+```{r}
+test.error.tree <- mean((predict(fit.single.full, data.test) - data.test$Age.Adjusted.Rate)^2)
+test.error.lm <- mean((predict(fit.lm, data.test) - data.test$Age.Adjusted.Rate)^2)
+test.error.lasso <- mean((predict(fit.final, data.test) - data.test$Age.Adjusted.Rate)^2)
+test.error.rf <- mean((predict(fit.rf, data.test) - data.test$Age.Adjusted.Rate)^2)
+
+data.frame(test.error.lm = test.error.lm, 
+           test.error.tree = test.error.tree,
+           test.error.lasso = test.error.lasso,
+           test.error.rf = test.error.rf)
+```
