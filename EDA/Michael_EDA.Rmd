@@ -1,0 +1,63 @@
+---
+title: "Michael_EDA"
+author: "Michael"
+date: "7/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width=8, fig.height=4)
+options(scipen = 0, digits = 3)  # controls base R output
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(ggplot2, dplyr, tidyverse, gridExtra, ggrepel, plotly, skimr, usmap) 
+# install a package if it does not exist already and put the package in the path (library)
+# dplyr, ggplot2,tidyr
+```
+
+```{r}
+data <- read.csv("data/merged_data.csv")
+filtered <- data %>% select(FIPS, Age.Adjusted.Rate, Population, Ed3SomeCollegePct, PovertyAllAgesPct, State)
+filtered <- rename(filtered, "fips" = "FIPS")
+```
+
+```{r}
+filtered %>%
+  ggplot(aes(x = Age.Adjusted.Rate)) +
+  geom_histogram(color = "black", fill = "coral")
+```
+
+```{r}
+death.data = read.csv("data/cleaned_death_data.csv")
+death.data <- death.data %>% drop_na()
+death.data <- rename(death.data, "fips" = "County.Code")
+
+death.heatmap <- plot_usmap(regions = "county",
+                                 data = death.data,
+                                 values = "Age.Adjusted.Rate",
+                                 exclude = c("Hawaii", "Alaska"),
+                                 color = "black") +
+  scale_fill_gradient(
+    low = "yellow", high = "purple",
+    name = "Deaths per Capita",
+    label = scales::comma) +
+  labs(title = "Age Adjusted Rate", subtitle = "Contiguous US States") +
+  theme(legend.position = "right")
+
+death.heatmap
+```
+
+```{r}
+filtered %>%
+  ggplot(aes(x = Ed3SomeCollegePct, y = Age.Adjusted.Rate)) +
+  geom_point(aes(color = State)) +
+  geom_smooth(method = "lm")
+```
+
+```{r}
+filtered %>%
+  ggplot(aes(x = PovertyAllAgesPct, y = Age.Adjusted.Rate)) +
+  geom_point(aes(color = State)) +
+  geom_smooth(method = "lm")
+```
