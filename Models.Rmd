@@ -110,3 +110,10 @@ data.frame(test.error.lm = test.error.lm,
            test.error.lasso = test.error.lasso,
            test.error.rf = test.error.rf)
 ```
+
+Find significant variables for random forest model 
+```{r}
+varImpPlot(fit.rf, sort = TRUE, n.var=min(12, nrow(fit.rf$importance)), main = "Significant Variables for Random Forest")
+
+```
+
