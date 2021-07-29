@@ -1,0 +1,75 @@
+---
+title: "regression_model.Rmd"
+output: html_document
+---
+
+```{r Setup, include=TRUE, results='hide', warning=FALSE}
+knitr::opts_chunk$set(echo = T, cache = T, fig.width=8, fig.height=4,
+                      warning = F)
+options(scipen = 0, digits = 3)  ## controls base R output
+
+## Package setup
+if(!require("pacman")) install.packages("pacman")
+
+pacman::p_load(tidyverse, dplyr, ggplot2, data.table, lubridate,
+               plotROC, usmap, glmnet, car)
+```
+
+```{r read data}
+data <- read.csv("data/merged_data.csv", header = TRUE, stringsAsFactors = F)
+```
+
+
+LASSO 
+```{r}
+# remove county and state columns 
+data <- data[ , -which(names(data) %in% c("State", "County", "FIPS"))]
+X <- model.matrix(Age.Adjusted.Rate~., data = data)[,-1:-2]
+y <- data$Age.Adjusted.Rate
+# LASSO
+set.seed(10) 
+fit <- cv.glmnet(X, y, nfolds = 10, alpha = 1) 
+plot(fit)
+# list all non-zero coefficients 
+coef.min <- coef(fit, s="lambda.min")
+# list of variables that have non-zero coefficients 
+var.min <- coef.min@Dimnames[[1]][coef.min@i + 1][-1]
+```
+
+backwards selection 
+```{r}
+# get subset of data with the response variable and LASSO output 
+data_subset <- select(data, c("Age.Adjusted.Rate", var.min))
+# relaxed LASSO
+fit.min.lm <- lm(Age.Adjusted.Rate~., data_subset) 
+Anova(fit.min.lm)
+# begin backwards selection until all variables are significant at 0.05 level
+fit.min.lm.back1 <- update(fit.min.lm, .~. - Median.AQI)
+Anova(fit.min.lm.back1)
+fit.min.lm.back2 <- update(fit.min.lm.back1, .~. - AsianNonHispanicPct2010)
+Anova(fit.min.lm.back2)
+fit.min.lm.back3 <- update(fit.min.lm.back2, .~. - PctEmpServices)
+Anova(fit.min.lm.back3)
+fit.min.lm.back4 <- update(fit.min.lm.back3, .~. - Population)
+Anova(fit.min.lm.back4)
+fit.min.lm.back5 <- update(fit.min.lm.back4, .~. - Ed5CollegePlusPct)
+Anova(fit.min.lm.back5)
+fit.min.lm.back6 <- update(fit.min.lm.back5, .~. - PctEmpFIRE)
+Anova(fit.min.lm.back6)
+fit.min.lm.back7 <- update(fit.min.lm.back6, .~. - PctEmpInformation)
+Anova(fit.min.lm.back7)
+fit.min.lm.back8 <- update(fit.min.lm.back7, .~. - PctEmpConstruction)
+Anova(fit.min.lm.back8)
+fit.final <- update(fit.min.lm.back8, .~. - PctEmpAgriculture)
+Anova(fit.final)
+
+summary(fit.final)
+```
+
+```{r plots}
+# residual plot 
+plot(fit.final, 1, pch=16)
+abline(h=0, col="blue", lwd=3)
+#qqplot 
+plot(fit.final, 2) 
+```
