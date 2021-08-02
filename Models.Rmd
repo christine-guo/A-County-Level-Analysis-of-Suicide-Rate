@@ -16,7 +16,8 @@ pacman::p_load(tree, rpart, randomForest, ranger, rattle, pROC, partykit, ggplot
 # dplyr, ggplot2,tidyr
 ```
 
-Read in data and split into testing + training datasets.
+We first read in the merged data and remove the X, State, County, and FIPS data. Next, we drop all the NA values and split the dataset in the following manner: 75% for training and 25% for testing.
+
 ```{r}
 data <- read.csv("data/merged_data.csv") %>% select(-X, -State, -County, -FIPS)
 data <- data %>% drop_na()
@@ -27,7 +28,10 @@ data.train <- data[train.index,]
 data.test <- data[-train.index, ]
 ```
 
-Create single decision tree model with all predictors.
+Our first model we create is a single decision tree using all predictors available. According to the tree, the variables that are significant in predicting a county's age adjusted suicide rate are: Population, Total_Precipitation , Net_International_Migration_Rate_2010_2019, Ed3SomeCollegePct, HispanicPct2010, BlackNonHispanicPct2010, AvgHHSize, PctEmpMining, and Avg_Temperature. 
+
+From the leftmost end node, we can see that, according to the decision tree, counties with small populations (less that 80612) tend to see the highest age adjusted suicide rates. This seems to indicated that rural communities may be at a greater risk of suicide. This may be due to the fact that rural communities have many barriers to accessing quality healthcare as well as being less educated on mental health, leading to stigma.
+
 ```{r}
 fit.single.full <- tree(Age.Adjusted.Rate ~ ., data.train)
 
@@ -36,9 +40,14 @@ title(main = "Single Tree With All Predictors")
 text(fit.single.full, pretty = 0, digits = 3)
 ```
 
-Create linear regression model using single decision tree variables.
+Next, we take the variables determined to be significant by the decision tree and create a linear model from them. According to the linear model, Net_International_Migration_Rate_2010_2019 and HispanicPct2010 are not significant at a 10% alpha level. 
+
+Furthermore, when controlling for all other variables, a change in AvgHHSize has the largest impact on a county's age adjusted suicide rate. That is, when AvgHHSize increases by one unit, a county's age adjusted suizide rate seems to decrease by 7.87. This may be due to the fact that larger households are better equipped to offer social and emotional support to each household member, decreasing the risk of suicide.
+
 ```{r}
 fit.lm <- lm(Age.Adjusted.Rate ~ Population + Total_Precipitation + Net_International_Migration_Rate_2010_2019 + Ed3SomeCollegePct + HispanicPct2010 + BlackNonHispanicPct2010 + AvgHHSize + PctEmpMining + Avg_Temperature, data.train)
+
+summary(fit.lm)
 
 # residual plot 
 plot(fit.lm, 1, pch=16)
@@ -47,11 +56,12 @@ abline(h=0, col="blue", lwd=3)
 plot(fit.lm, 2) 
 ```
 
-Create random forest.
+The third model we create is a random forest model. We set mtry to be 11 as we have 34 independent variables. Ntree is also set to be 500 because, as you can see in the graph below, the error seems to settle down around there.
+
 ```{r}
 fit.rf <- randomForest(Age.Adjusted.Rate ~ ., data.train, mtry = 11, ntree = 500)
 
-plot(fit.rf)
+plot(fit.rf, main = "Random Forest: mtry = 11, ntree = 500")
 ```
 
 Create LASSO model.
@@ -68,7 +78,8 @@ coef.min <- coef(fit, s="lambda.min")
 var.min <- coef.min@Dimnames[[1]][coef.min@i + 1][-1]
 ```
 
-Perform backwards selection.
+
+
 ```{r}
 # get subset of data with the response variable and LASSO output 
 data_subset <- select(data.train, c("Age.Adjusted.Rate", var.min))
@@ -86,6 +97,8 @@ fit.min.lm.back8 <- update(fit.min.lm.back7, .~. - PerCapitaInc)
 fit.min.lm.back9 <- update(fit.min.lm.back8, .~. - Avg_Temperature)
 fit.min.lm.back10 <- update(fit.min.lm.back9, .~. - PctEmpFIRE)
 fit.final <- update(fit.min.lm.back10, .~. - PctEmpInformation)
+
+Anova(fit.final)
 ```
 
 Perform diagnostics on LASSO model.
@@ -97,8 +110,8 @@ abline(h=0, col="blue", lwd=3)
 plot(fit.final, 2) 
 ```
 
+Now that we have created all four models, it is time to evaluate and compare them. After running the models on the testing dataset and extracting their mean squared errors, we can see that random forest formed the best, with a mean squared error of only 15.4. On the other hand, the testing error for the linear model based off of our tree's significant variables performed the worst, with a testing error of 25.8. Lasso and the single tree did not perform much better, with a testing error of 25.2 and 24.8 respectively. Although the lasso model did not perform that well, we still think it is important as it provides us with a clear and informative linear relationship between the variables.
 
-Evaluate all 4 models.
 ```{r}
 test.error.tree <- mean((predict(fit.single.full, data.test) - data.test$Age.Adjusted.Rate)^2)
 test.error.lm <- mean((predict(fit.lm, data.test) - data.test$Age.Adjusted.Rate)^2)
@@ -110,10 +123,3 @@ data.frame(test.error.lm = test.error.lm,
            test.error.lasso = test.error.lasso,
            test.error.rf = test.error.rf)
 ```
-
-Find significant variables for random forest model 
-```{r}
-varImpPlot(fit.rf, sort = TRUE, n.var=min(12, nrow(fit.rf$importance)), main = "Significant Variables for Random Forest")
-
-```
-
