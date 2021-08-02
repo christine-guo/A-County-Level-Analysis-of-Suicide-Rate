@@ -22,11 +22,18 @@ filtered <- data %>% select(FIPS, Age.Adjusted.Rate, Population, Ed3SomeCollegeP
 filtered <- rename(filtered, "fips" = "FIPS")
 ```
 
+We begin our exploratory data analysis by delving into our response variable: the age adjusted suicide rate by county. It is important that we us the age adjusted rate because the age profiles of different counties are varied. As a result, we must take age into account in order to be able to make unbiased comparisons across difference counties.
+
+As you can see from the histogram of the age adjusted rate below, the distribution is quite right skewed. Furthermore, it seems to be centered around 15.
+
 ```{r}
 filtered %>%
   ggplot(aes(x = Age.Adjusted.Rate)) +
-  geom_histogram(color = "black", fill = "coral")
+  geom_histogram(color = "black", fill = "coral") + 
+  ggtitle("Histogram of the Age Adjusted Rate")
 ```
+
+Next, we create a county level heatmap displaying the age adjusted suicide rate. We can see that, in general, counties seem to be clustered in groups that seem to all have similar age adjusted suicide rates. For example, much of Southern California seems to have an age adjusted suicide rate between 10 and 20. On the other hand, counties in South-west Oregon seem to all have a higher age adjusted suicide at around 35.
 
 ```{r}
 death.data = read.csv("data/cleaned_death_data.csv")
@@ -48,12 +55,18 @@ death.heatmap <- plot_usmap(regions = "county",
 death.heatmap
 ```
 
+We then turn our attention to our socioeconomic variables. Two variables of interest are education and poverty.
+
+For education, we will take a look at the percentage of adults over 25 who's education level is only some college. From the scatter plot of that variables vs the age adjusted suicide rate, a moderate, positive, and linear relationship can be seen.
+
 ```{r}
 filtered %>%
   ggplot(aes(x = Ed3SomeCollegePct, y = Age.Adjusted.Rate)) +
   geom_point(aes(color = State)) +
   geom_smooth(method = "lm")
 ```
+
+Next, we look at the percentage of all people in the county living in poverty. From the scatter plot of poverty vs the age adjusted suicide rate, a weak, positive, and linear relationship can be seen between the two variables.
 
 ```{r}
 filtered %>%
