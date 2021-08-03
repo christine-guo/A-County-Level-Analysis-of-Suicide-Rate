@@ -1,0 +1,47 @@
+---
+title: "Final Project"
+author: "Anoushka"
+date: "7/28/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, results = "hide", fig.width=8, fig.height=4)
+options(scipen = 0, digits = 3)  # controls base R output
+# check if you have ISLR package, if not, install it
+if(!require('pacman')) {install.packages('pacman')}
+pacman::p_load(ISLR, readxl, tidyverse, magrittr, dplyr, ggplot2)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+#Reading the Data and Knowign the variable names
+In order to know the exact names of the variables I would be plotting, I read the merged data that we made from all the data sets, and used the names() function so I coudl know the accurate names of the variables
+
+```{r}
+merged_data <- read.csv("merged_data.csv")
+names(merged_data)
+```
+
+
+## Making my Graphs
+
+I decided to make the graph on the variables on AQI data  that we thought were significant becuase we thought the quaity of air could imapct suicide rate-- the median AQI and the percent unhealthy days, which were the percent of days per county with an unhealthy AQI
+
+
+```{r }
+ggplot(data = merged_data, mapping = aes(x=Median.AQI, y = Age.Adjusted.Rate)) +
+  geom_point(aes(color= State))
+```
+#Analyis of the first scatterplot
+As we can see from the scatterplot of Age_Adjusted_rate versus Median.AQI, we can see that there is no direct trend between the two variabels, and the poitns on the scatterplot are extremely random, so we would say that Median AQI doesn't impact the suicide rate
+```{r }
+ggplot(data = merged_data, mapping = aes(x=per_unhealthy_days, y = Age.Adjusted.Rate)) + 
+  geom_point(aes(color=State, size = 10))
+```
+#Analyis of the second /scatterplot
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
